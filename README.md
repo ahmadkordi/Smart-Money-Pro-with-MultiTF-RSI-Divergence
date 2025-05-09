@@ -60,9 +60,13 @@ Fibonacci-based targets
 Custom alert conditions
 
 Why This Stands Out:
+
 This indicator is not just another RSI tool – it’s a sophisticated trading system that:
+
 ✔ Reduces false signals with multi-layered confirmation.
+
 ✔ Saves time by analyzing multiple timeframes in one pane.
+
 ✔ Works seamlessly for crypto, forex, and stocks.
 
 
