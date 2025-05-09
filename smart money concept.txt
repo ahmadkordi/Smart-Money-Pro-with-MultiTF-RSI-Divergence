@@ -1,0 +1,91 @@
+//@version=5
+indicator('XRP Smart Money Pro with MultiTF RSI & Divergence', overlay=true, max_lines_count=500, max_labels_count=500)
+
+// ==== INPUTS ====
+swingLength     = input.int(14, 'Swing Length', minval=5, maxval=20)
+atrPeriod       = input.int(10, 'ATR Period', minval=5)
+atrMultiplier   = input.float(1.2, 'ATR Multiplier', step=0.1)
+volumeThreshold = input.float(1.5, 'Volume Threshold', step=0.1)
+rsiLength       = input.int(12, 'RSI Length')
+rsiOverbought   = input.int(55, 'RSI Overbought')
+rsiOversold     = input.int(45, 'RSI Oversold')
+showSignals     = input(true, 'Show Trading Signals')
+showSwings      = input(true, 'Show Swing Points')
+showLabels      = input(true, 'Show Labels on Shapes')
+labelSize       = input.string(size.small, 'Label Size', options=[size.tiny, size.small, size.normal])
+
+// ==== CALCULATIONS ====
+atrValue     = ta.atr(atrPeriod)
+rsiValue     = ta.rsi(close, rsiLength)
+volumeSma    = ta.sma(volume, 20)
+validVolume  = volume > volumeThreshold * volumeSma
+swingHigh    = high >= ta.highest(high, swingLength)
+swingLow     = low <= ta.lowest(low, swingLength)
+breakoutUp   = ta.crossover(close, ta.highest(high, 5)) and validVolume
+breakoutDown = ta.crossunder(close, ta.lowest(low, 5)) and validVolume
+normalVolatility = (high - low) < atrMultiplier * atrValue
+buySignal  = showSignals and breakoutUp and normalVolatility and rsiValue < rsiOverbought
+sellSignal = showSignals and breakoutDown and normalVolatility and rsiValue > rsiOversold
+
+// ==== MULTI-TIMEFRAME RSI ====
+getRSI(tf) => request.security(syminfo.tickerid, tf, ta.rsi(close, rsiLength), lookahead=barmerge.lookahead_off)
+rsi_1m  = getRSI("1")
+rsi_5m  = getRSI("5")
+rsi_15m = getRSI("15")
+rsi_30m = getRSI("30")
+rsi_1h  = getRSI("60")
+rsi_4h  = getRSI("240")
+
+// ==== DIVERGENCE ====
+var float prevLow = na
+var float prevRSILow = na
+var float prevHigh = na
+var float prevRSIHigh = na
+bullDiv = swingLow and not na(prevLow) and low < prevLow and rsiValue > prevRSILow
+bearDiv = swingHigh and not na(prevHigh) and high > prevHigh and rsiValue < prevRSIHigh
+if swingLow
+    prevLow := low
+    prevRSILow := rsiValue
+if swingHigh
+    prevHigh := high
+    prevRSIHigh := rsiValue
+
+// ==== COLORS ====
+bullColor       = color.new(#00bcd4, 0)
+bearColor       = color.new(#ff5252, 0)
+swingBullColor  = color.new(#4caf50, 70)
+swingBearColor  = color.new(#f44336, 70)
+
+// ==== PLOTTING ====
+plotshape(buySignal, title="Buy Signal", location=location.belowbar, color=bullColor, size=size.small, style=shape.triangleup)
+plotshape(sellSignal, title="Sell Signal", location=location.abovebar, color=bearColor, size=size.small, style=shape.triangledown)
+plotshape(showSwings and swingHigh, title="Swing High", location=location.abovebar, color=swingBearColor, size=size.small, style=shape.triangledown)
+plotshape(showSwings and swingLow, title="Swing Low", location=location.belowbar, color=swingBullColor, size=size.small, style=shape.triangleup)
+
+// ==== LABELS ====
+if showLabels
+    if buySignal
+        label.new(bar_index, low, "BUY", color=bullColor, textcolor=color.white, style=label.style_label_up, yloc=yloc.belowbar, size=labelSize)
+    if sellSignal
+        label.new(bar_index, high, "SELL", color=bearColor, textcolor=color.white, style=label.style_label_down, yloc=yloc.abovebar, size=labelSize)
+    if swingHigh
+        label.new(bar_index, high, "SW HIGH\n" + str.tostring(high), color=swingBearColor, textcolor=color.white, style=label.style_label_down, yloc=yloc.abovebar, size=labelSize)
+    if swingLow
+        label.new(bar_index, low, "SW LOW\n" + str.tostring(low), color=swingBullColor, textcolor=color.white, style=label.style_label_up, yloc=yloc.belowbar, size=labelSize)
+
+// ==== DIVERGENCE LABELS ====
+if bullDiv
+    label.new(bar_index, low, "🔼 Bullish Divergence", style=label.style_label_up, color=color.green, textcolor=color.white, yloc=yloc.belowbar)
+if bearDiv
+    label.new(bar_index, high, "🔽 Bearish Divergence", style=label.style_label_down, color=color.red, textcolor=color.white, yloc=yloc.abovebar)
+
+// ==== RSI TABLE ====
+var table rsiTable = table.new(position.top_right, 2, 7, border_width=1)
+if bar_index % 5 == 0
+    table.cell(rsiTable, 0, 0, "TF", text_color=color.yellow, bgcolor=color.gray)
+    table.cell(rsiTable, 1, 0, "RSI", text_color=color.yellow, bgcolor=color.gray)
+    table.cell(rsiTable, 0, 1, "1m", text_color=color.yellow),  table.cell(rsiTable, 1, 1, str.tostring(rsi_1m, "#.##"),text_color=color.yellow)
+    table.cell(rsiTable, 0, 2, "5m",text_color=color.yellow),  table.cell(rsiTable, 1, 2, str.tostring(rsi_5m, "#.##"),text_color=color.yellow)
+    table.cell(rsiTable, 0, 3, "15m",text_color=color.yellow), table.cell(rsiTable, 1, 3, str.tostring(rsi_15m, "#.##"),text_color=color.yellow)
+    table.cell(rsiTable, 0, 5, "1h",text_color=color.yellow),  table.cell(rsiTable, 1, 5, str.tostring(rsi_1h, "#.##"),text_color=color.yellow)
+    table.cell(rsiTable, 0, 6, "4h",text_color=color.yellow),  table.cell(rsiTable, 1, 6, str.tostring(rsi_4h, "#.##"),text_color=color.yellow)
