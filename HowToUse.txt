@@ -1,0 +1,8 @@
+🛠️ How to Use:
+Add the indicator to TradingView.
+
+Adjust inputs based on your strategy.
+
+Watch for BUY/SELL signals & divergences.
+
+💡 Note: This is a FREE & OPEN-SOURCE project. Contributions & suggestions are welcome!
